@@ -14,6 +14,7 @@ import (
 )
 
 func ListenAndServe(addr string, handler http.Handler) error {
+	fmt.Printf("Server listening to port %s", addr)
 	listener, err := net.Listen("tcp", addr)
 		if err != nil {
 			return fmt.Errorf("listen: %w", err)
@@ -32,11 +33,18 @@ func ListenAndServe(addr string, handler http.Handler) error {
 				}
 				return fmt.Errorf("accept: %w", err)
 			}
-			go HandleConnection(conn, handler)
+		
+			go func(c net.Conn) {
+				defer c.Close()
+				if err := HandleConnection(c, handler); err != nil {
+					fmt.Printf("HandleConnection error: %v", err)
+				}
+			}(conn)
 	}
 }
 
 func HandleConnection(conn net.Conn, mux http.Handler) error {
+	fmt.Printf("Received New Connection")
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
@@ -44,9 +52,10 @@ func HandleConnection(conn net.Conn, mux http.Handler) error {
 
 	for {
 		conn.SetReadDeadline(time.Now().Add(15 * time.Second))
-
 		req, err := ParseRequest(reader)
+		fmt.Printf("Reading request...")
 		if err != nil {
+			fmt.Printf("Error Reading request...\n")
 			if errors.Is(err, io.EOF) {
 				return errorHandler.ClientClosedConnection
 			}
@@ -67,7 +76,7 @@ func HandleConnection(conn net.Conn, mux http.Handler) error {
 			Close:         false,
 		}
 		res.Header.Set("Content-Type", "text/plain; charset=utf-8")
-
+		
 		if err := WriteResponse(writer, req, res); err != nil {
 			return errorHandler.ErrWriteResponse
 		}

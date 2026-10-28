@@ -34,6 +34,7 @@ type responseWriter struct {
 	closeConn     bool
 }
 
+
 func WriteResponse(bw *bufio.Writer, req *http.Request, res *Response) error {
 	if res.Header == nil {
 		res.Header = make(http.Header)
